@@ -209,15 +209,15 @@ int datci(poz p){
 }
 int datup(poz p) {
 	FILE *fp;
-	fp = fopen("meta.txt", "w");
+	fp = fopen("meta.txt", "w+");
 	if (fp == NULL) {
 		puts("Datoteka nije otvorena");
 	}
 	while (p->next!=NULL){
 		p = p->next;
-		fprintf(fp, "%s", p->ime);
-		fprintf(fp, "%s", p->prezime);
-		fprintf(fp, "%d", p->god);
+		fprintf(fp, "%s\n", p->ime);
+		fprintf(fp, "%s\n", p->prezime);
+		fprintf(fp, "%d\n", p->god);
 	}
 	return 1;
 }
