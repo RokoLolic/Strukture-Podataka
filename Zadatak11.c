@@ -1,126 +1,145 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
 #include <stdint.h>
-#define STR 256
-#define N 11 
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
+#pragma warning(disable:4996)
 
-typedef struct entry {
-	int mat;
-	char ime[STR], prezime[STR];
-	struct entry *next;
-} entry;
+#define max 11
+#define str 256
 
-typedef struct table {
-	entry **entries;
-} table;
+struct cvorliste;
+typedef struct cvorliste * poz;
+typedef struct cvorliste * lista;
+struct hashT;
+typedef struct hashT *hashtab;
 
-table* create_table(void);
-void insert_values(table*);
-int hash(char*, int);
-int collision(entry*);
-void print_table(table*);
-int find(table*, char*, char*);
+hashtab inicijaliziraj(int);
+void izbrisi(hashtab);
+poz trazi(char*, char*, hashtab);
+void dodaj(char*, char*, int, hashtab);
+int dobijkljuc(char*);
+void push(poz, char*, char*, int);
+void ispisi(hashtab);
 
-int main()
-{
-	char ime[STR], prezime[STR];
-
-	table *hashtable = create_table();
-	insert_values(hashtable);
-	print_table(hashtable);
-
-	printf("Enter control c to exit\n");
-	do {
-		printf("\nEnter first and last name of student: ");
-		scanf(" %s %s", ime, prezime);
-		if (!find(hashtable, ime, prezime))
-			printf("Student not in file...\n");
-	} while (1);
-
-	return 0;
-}
-table* create_table(void)
-{
-	table *hashtable =(table*)malloc(sizeof(table));
-	hashtable->entries = (entry**)malloc(N * sizeof(entry*));
-	for (int i = 0; i < N; ++i)
-		hashtable->entries[i] = NULL;
-	return hashtable;
-}
-void insert_values(table *hashtable)
-{
-	FILE *ptr = fopen("datoteke/11_studenti.txt", "r");
-	entry *current;
-	char prez[STR], name[STR];
-	int matbr, key;
-
-	while (!feof(ptr)) {
-		fscanf(ptr, "%d %s %s", &matbr, name, prez);
-		key = hash(prez, 0);
-		entry *temp = (entry*)malloc(sizeof(entry));
-		strcpy(temp->ime, name);
-		strcpy(temp->prezime, prez);
-		temp->mat = matbr;
-		temp->next = NULL;
-
-		if (collision(hashtable->entries[key])) {
-			current = hashtable->entries[key];
-			while (current->next != NULL)
-				current = current->next;
-			current->next = temp;
-		}
-		else
-			hashtable->entries[key] = temp;
+struct cvorliste {
+	char ime[str];
+	char prez[str];
+	int matbr;
+	poz next;
+};
+struct hashT {
+	int velicina;
+	poz* red;
+};
+int main() {
+	hashtab tablica;
+	tablica = inicijaliziraj(max);
+	char p[] = "iva", d[] = "kovac", a[]="luka", b[]="prancic", c[]="ante", e[]="kola", ime[str], prezime[str];
+	poz temp;
+	dodaj(p, d, 123, tablica);
+	dodaj(a, b, 321, tablica);
+	dodaj(c, e, 564, tablica);
+	dodaj(a, d, 986, tablica);
+	ispisi(tablica);
+	puts("Upisite ime, zatim prezime ucenika");
+	scanf("%s %s", ime, prezime);
+	temp = trazi(ime, prezime, tablica);
+	if (temp != NULL) {
+		printf("%d", temp->matbr);
 	}
+	izbrisi(tablica);
 
-	fclose(ptr);
+	return 1;
 }
-int collision(entry *e)
-{
-	return (e != NULL) ? 1 : 0;
-}
-int hash(char *prez, int sum)
-{
-	for (int i = 0; i < 5 && prez[i] != '\0'; i++)
-		sum += prez[i];
-	return sum % N;
-}
-void print_table(table *hashtable)
-{
-	entry *current;
-	for (int i = 0, j = 1; i < N; i++) {
-		printf("[%d][%d]: ", i + 1, j);
-		if (hashtable->entries[i] != NULL) {
-			printf("%.6s\t", hashtable->entries[i]->ime);
-			printf("%.6s\t", hashtable->entries[i]->prezime);
-			printf("%d\t", hashtable->entries[i]->mat);
-			current = hashtable->entries[i];
-			while (current->next != NULL) {
-				printf("[%d][%d]: ", i + 1, ++j);
-				printf("%.6s\t", current->next->ime);
-				printf("%.6s\t", current->next->prezime);
-				printf("%d\t", current->next->mat);
-				current = current->next;
-			}
+void izbrisi(hashtab tab) {
+	poz vezlist, temp, brisi;
+
+	for (int i = 0; i < tab->velicina; i++) {
+		temp = tab->red[i];
+		while (temp->next != NULL) {
+			brisi = temp->next;
+			temp->next = brisi->next;
+			free(brisi);
 		}
-		else
-			printf("[empty]");
-		printf("\n");
-		j = 1;
+		free(tab->red[i]);
 	}
-	printf("\n\n\n");
 }
-int find(table *hashtable, char *ime, char *prez)
-{
-	int key = hash(prez, 0);
-	entry *current = hashtable->entries[key];
-	while (current->next != NULL) {
-		if (!strcmp(current->next->ime, ime) && !strcmp(current->next->prezime, prez)) {
-			printf("FOUND: %d\n", current->next->mat);
-			return 1;
+
+poz trazi(char * im, char* pr, hashtab tab) {
+	int kljuc = dobijkljuc(pr) % (tab->velicina);
+	poz temp = tab->red[kljuc];
+	while (temp->next != NULL) {
+		temp = temp->next;
+		if ((strcmp(temp->ime, im)==0) && (strcmp(temp->prez, pr)==0)) {
+			return temp;
 		}
-		current = current->next;
 	}
-	return 0;
+	return NULL;
+}
+hashtab inicijaliziraj(int vel) {
+	hashtab tablica;
+	int i = 0;
+	poz* linije;
+	//tablica = (hashtab)malloc(sizeof(lista)*vel + sizeof(int));
+	tablica = (hashtab)malloc(sizeof(hashT));
+	linije = (poz*)malloc(sizeof(poz)*vel);
+	tablica->red = linije;
+	tablica->velicina = vel;
+	for (i = 0; i < vel; i++) {
+		(*(tablica->red + i)) = (poz)malloc(sizeof(cvorliste));
+		(*(tablica->red + i))->next = NULL;
+	}
+	return tablica;
+}
+int dobijkljuc(char* naziv) {
+	int kljuc=0, i=0;
+	while (strlen(naziv) != 0 && i < 5) {
+		kljuc += (int) *(naziv + i);
+		i++;
+	}
+	return kljuc;
+}
+void dodaj(char* im, char* pr, int mb, hashtab tab) {
+	int kljuc;
+	kljuc = dobijkljuc(pr) % (tab->velicina);
+	push(tab->red[kljuc], im, pr, mb);
+	return;
+}
+void ispisi(hashtab tab) {
+	poz temp;
+	for (int i = 0; i < tab->velicina; i++) {
+		printf("%d. red: ", i);
+		temp = tab->red[i];
+		//temp = temp->next;
+		while (temp->next != NULL) {
+			temp = temp->next;
+			printf("|%s %s %d| ",temp->prez, temp->ime, temp->matbr);
+		}
+		puts("");
+	}
+}
+void push(poz p, char* im, char* pr, int m) {
+	poz q;
+	char punoip[str], punoiptemp[str];
+	strcpy(punoip, im);
+	strcat(punoip, " ");
+	strcat(punoip, pr);
+	while (p->next != NULL) {
+		if (strcmp(pr, p->prez) > 0) {
+			break;
+		}
+		else if ((strcmp(pr, p->prez) == 0) && (strcmp(im, p->ime) >= 0)) {
+			break;
+		}
+		else {
+			p = p->next;
+		}
+	}
+	q = (poz)malloc(sizeof(cvorliste));
+	strcpy(q->ime, im);
+	strcpy(q->prez, pr);
+	q->matbr = m;
+	q->next = p->next;
+	p->next = q;
+	return;
 }
